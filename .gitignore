@@ -20,8 +20,10 @@ ARM64/
 *.rsuser
 
 # Paquetes NuGet restaurados (packages.config los vuelve a descargar)
-packages/
-!packages/build/
+# Acotado a la solución para no ignorar un futuro packages/ del monorepo
+/Solucion Ganaderia/packages/
+/Solucion Ganaderia/**/packages/
+!/Solucion Ganaderia/**/packages/build/
 *.nupkg
 *.snupkg
 
@@ -67,7 +69,39 @@ publish/
 *.sqlite
 *.sqlite3
 
+# ===== Node / JavaScript (monorepo) =====
+# Cada app puede tener su propio .gitignore (p. ej. ganaderia-tablet/.gitignore)
+node_modules/
+.pnpm-store/
+.turbo/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Variables de entorno (versionar solo plantillas como .env.example)
+.env
+.env.*
+!.env.example
+
+# ===== Editores / herramientas =====
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.claude/settings.local.json
+
 # ===== Sistema operativo (repo compartido entre Windows y Mac) =====
 Thumbs.db
+ehthumbs.db
 desktop.ini
+$RECYCLE.BIN/
+*.lnk
 .DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+# Archivos AppleDouble que macOS crea en carpetas compartidas con Parallels
+._*
