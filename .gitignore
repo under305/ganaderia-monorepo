@@ -1,0 +1,73 @@
+# ===== Visual Studio / WinForms (.NET Framework) =====
+
+# Carpeta de estado de Visual Studio (caché, índices, layout de ventanas)
+.vs/
+
+# Salidas de compilación (incluye bin/x86/ y obj/x86/)
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x86/
+x64/
+ARM64/
+
+# Configuración por usuario
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# Paquetes NuGet restaurados (packages.config los vuelve a descargar)
+packages/
+!packages/build/
+*.nupkg
+*.snupkg
+
+# Archivos temporales y de depuración
+*.pdb
+*.ilk
+*.obj
+*.log
+*.tlog
+*.cache
+*.tmp
+*.vspscc
+*.vssscc
+*_i.c
+*_p.c
+*.pch
+*.ipch
+*.aps
+*.ncb
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.VC.opendb
+
+# Herramientas de análisis / ReSharper / Rider
+_ReSharper*/
+*.DotSettings.user
+.idea/
+
+# Publicación ClickOnce / instaladores
+publish/
+*.publish.xml
+*.pubxml.user
+*.app
+*.application
+
+# ===== Datos locales =====
+# Bases de datos SQLite de prueba y exportables (no versionar datos reales)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# ===== Sistema operativo (repo compartido entre Windows y Mac) =====
+Thumbs.db
+desktop.ini
+.DS_Store
