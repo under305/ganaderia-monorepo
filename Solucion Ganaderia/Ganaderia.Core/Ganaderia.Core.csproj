@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Lógica del sistema: modelos, acceso a SQLite, reglas de negocio y exportación.
+    Este proyecto NO debe referenciar System.Windows.Forms: las pantallas viven en
+    "Solucion Ganaderia" y solo llaman a los servicios de aquí.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <Platforms>x86</Platforms>
+    <PlatformTarget>x86</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <RootNamespace>Ganaderia.Core</RootNamespace>
+    <AssemblyName>Ganaderia.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
+  </ItemGroup>
+
+</Project>

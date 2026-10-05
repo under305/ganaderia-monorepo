@@ -31,10 +31,11 @@ Monorepo con las dos aplicaciones del sistema:
 4. **Versión del esquema:** la base guarda su versión en `PRAGMA user_version`. La tablet
    la revisa antes de abrir el archivo y rechaza las versiones que no conoce.
 
-> **Estado actual:** la capa de SQLite y la exportación/importación **todavía no están
-> implementadas**. Esta sección describe el diseño acordado. Pendiente definir si la tablet
-> solo consulta (un sentido) o también captura datos y los regresa (dos sentidos). Eso hay que
-> decidirlo antes de crear las tablas.
+> **Estado actual:** en el escritorio ya funcionan la base SQLite, las migraciones y la clase
+> que genera el exportable (`ExportadorTablet`), pero la exportación todavía no tiene botón en
+> el menú. La importación en la tablet no está hecha. Pendiente definir si la tablet solo
+> consulta (un sentido) o también captura datos y los regresa (dos sentidos). Por ahora los IDs
+> son UUID para que sirvan en ambos casos.
 
 ### Reglas para que la base sirva en las dos apps
 
@@ -45,12 +46,60 @@ Las dos apps leen el mismo archivo, así que el esquema solo usa tipos que ambas
 | Fechas | `TEXT` ISO-8601 (`2026-10-04T10:00:00Z`) o `INTEGER` con segundos desde 1970 | Ticks de `DateTime` de .NET |
 | Verdadero/falso | `INTEGER` `0` / `1` | `"True"` / `"False"` como texto |
 | Pesos y montos | `REAL`, o `INTEGER` en gramos o centavos | Tipos `decimal` propios de .NET |
-| IDs | `INTEGER` autoincremental si es de un solo sentido; `TEXT` con UUID si la tablet también escribe | — |
+| IDs | `TEXT` con UUID (`Guid.NewGuid()`) | `INTEGER` autoincremental (choca si la tablet también crea registros) |
+| Nombres únicos | Columna `*_clave` con `Texto.Clave(nombre)` y restricción `UNIQUE` | `COLLATE NOCASE`, que no ignora mayúsculas en letras acentuadas ("Á" ≠ "á") |
 
-### App de escritorio (WinForms)
+### App de escritorio: lógica separada de la vista
 
-- **`Program.cs`**: arranca `Form1`.
-- **`Form1`**: ventana principal. Solo contiene el control `MainView` ocupando toda la ventana.
+La solución tiene dos proyectos. La regla es que **las pantallas no tienen lógica** y
+**la lógica no conoce las pantallas**:
+
+```
+Solucion Ganaderia/
+├── Ganaderia.Core/               ← C# puro, SIN WinForms (el compilador no deja usarlo aquí)
+│   ├── Comun/                    Resultado (éxito o mensaje de error), Texto.Clave
+│   ├── Modelos/                  Rancho, ...                      (como los "types" en RN)
+│   ├── Datos/                    ConexionSqlite, Migraciones, *Repository (solo SQL)
+│   ├── Servicios/                *Service: validaciones y reglas  (como los "hooks" en RN)
+│   ├── Exportacion/              ExportadorTablet (genera el .db para la tablet)
+│   └── ServiciosApp.cs           crea todos los servicios en un solo lugar
+│
+└── Solucion Ganaderia/           ← WinForms: solo pantallas
+    ├── Program.cs                abre la base, aplica migraciones y pasa ServiciosApp a Form1
+    └── Vistas/                   Form1, MainView, AgregarRanchoForm, ...
+```
+
+**Flujo de una operación**, por ejemplo "2. Agregar rancho":
+
+```
+MainView ──MenuOptionActivated("2")──▶ Form1 ──abre──▶ AgregarRanchoForm
+                                                           │ btnGuardar_Click
+                                                           ▼
+                                   RanchoService.Agregar(nombre, ubicación)  → valida
+                                                           ▼
+                                   RanchoRepository.Insertar(rancho)         → SQL
+                                                           ▼
+                                   Resultado { Exito, Mensaje, Valor }  ──▶  la vista lo muestra
+```
+
+**Para agregar una función nueva:**
+1. Modelo en `Core/Modelos/`. Si necesita tabla nueva, agrega un paso **al final** de
+   `Migraciones.Pasos` (nunca edites un paso ya aplicado).
+2. Repositorio en `Core/Datos/` con el SQL.
+3. Servicio en `Core/Servicios/` que valida y devuelve `Resultado`. Regístralo en `ServiciosApp`.
+4. Pantalla en `Vistas/` que recibe el servicio en el constructor y solo llama a sus métodos.
+5. En `Form1.MainView_MenuOptionActivated`, agrega el `case` de la tecla que la abre.
+
+**La base de datos** está en `%LOCALAPPDATA%\SIRGAN\ganaderia.db` (p. ej.
+`C:\Users\<usuario>\AppData\Local\SIRGAN\`). Se crea sola la primera vez y las migraciones
+pendientes se aplican en cada arranque.
+
+#### Vistas
+
+- **`Form1`**: ventana principal. Contiene `MainView` y decide qué pantalla abrir según la
+  opción elegida. Las opciones sin pantalla muestran "todavía no está disponible". `Esc` y
+  `J. Salir` piden confirmación antes de cerrar.
+- **`AgregarRanchoForm`**: ejemplo completo del patrón vista → servicio.
 - **`MainView`** (`UserControl`): menú principal estilo consola:
   - 19 opciones: `1`–`9` (rancho, lotes, animales, movimientos, reportes, configuración) y
     `A`–`J` (ventas, compras, sanidad, reproducción, alimentación, pesajes, usuarios,
@@ -63,9 +112,6 @@ Las dos apps leen el mismo archivo, así que el esquema solo usa tipos que ambas
   - **Eventos públicos:**
     - `MenuOptionActivated(Key, Text)`: se dispara al activar una opción.
     - `CloseRequested`: se dispara con `Esc` o con la opción `J`.
-
-    > Por ahora `Form1` **no escucha esos eventos**, así que las opciones del menú todavía
-    > no abren nada y `Esc` / `J. Salir` no cierran la ventana.
 
 ### App de tablet (Expo)
 
@@ -91,21 +137,21 @@ Las dos apps leen el mismo archivo, así que el esquema solo usa tipos que ambas
 ### Desarrollo
 
 1. Abre `Solucion Ganaderia/Solucion Ganaderia.slnx`.
-2. En la barra de herramientas elige la configuración **`Debug`** y la plataforma **`x86`**.
-3. Presiona `F5`.
+2. Verifica que el proyecto de inicio sea **`Solucion Ganaderia`** (clic derecho → *Establecer
+   como proyecto de inicio*) y que la configuración sea **`Debug`** | **`x86`**.
+3. Presiona `F5`. La primera compilación descarga el paquete NuGet `System.Data.SQLite.Core`.
 
 ### Compilar para la PC vieja (x86)
 
-La PC de destino es de 32 bits, así que **siempre compila con la plataforma `x86`**. No uses
-`Any CPU`: el proyecto tiene `PreferNativeArm64` activado y en esa plataforma no genera un
-ejecutable x86.
+La solución y los dos proyectos solo tienen la plataforma **`x86`**, que es la de la PC de
+destino.
 
 **Desde Visual Studio:** selecciona `Release` | `x86` y luego **Compilar → Compilar solución**.
 
 **Desde la línea de comandos** ("Developer PowerShell for VS"):
 
 ```powershell
-msbuild "Solucion Ganaderia\Solucion Ganaderia\Solucion Ganaderia.csproj" /p:Configuration=Release /p:Platform=x86
+msbuild "Solucion Ganaderia\Solucion Ganaderia.slnx" /restore /p:Configuration=Release /p:Platform=x86
 ```
 
 El resultado queda en:
@@ -116,8 +162,9 @@ Solucion Ganaderia\Solucion Ganaderia\bin\x86\Release\
 
 ### Instalar en la PC vieja
 
-1. Copia **toda** la carpeta `bin\x86\Release\` (no solo el `.exe`). Cuando se agregue SQLite,
-   ahí también quedarán sus librerías nativas.
+1. Copia **toda** la carpeta `bin\x86\Release\` (no solo el `.exe`). Debe incluir
+   `Ganaderia.Core.dll`, `System.Data.SQLite.dll` y la subcarpeta `x86\SQLite.Interop.dll`.
+   Si falta esta última, el programa muestra "No se pudo abrir la base de datos" al iniciar.
 2. La PC necesita **Windows 7 SP1 o posterior** y tener instalado **.NET Framework 4.7.2**
    (instalador offline de Microsoft).
 3. Ejecuta `Solucion Ganaderia.exe`.
@@ -216,8 +263,9 @@ configuración nativa va en `app.json`.
 - [ ] Definir si la sincronización es de un sentido o de dos.
 - [ ] Definir cómo se transfiere el archivo (USB, carpeta, red local) y si la tablet es Android o iPad.
 - [ ] Confirmar el Windows de la PC destino. Con XP o Vista habría que bajar la versión de .NET Framework.
-- [ ] Quitar `PreferNativeArm64` y dejar `x86` como única plataforma de la solución.
-- [ ] Agregar SQLite al escritorio (`System.Data.SQLite.Core`) y crear el esquema versionado.
-- [ ] Conectar `MenuOptionActivated` / `CloseRequested` en `Form1`.
+- [ ] Probar el `.exe` (con SQLite) en la PC vieja real.
+- [ ] Decidir en qué opción del menú va "Exportar para tablet" y conectarla a `ExportadorTablet`.
+- [ ] Pantallas del resto de las opciones del menú (empezando por "1. Seleccionar rancho").
+- [ ] Proyecto de pruebas (MSTest) para `Ganaderia.Core`.
 - [ ] Limpiar la plantilla de Expo (`pnpm reset-project`) y cambiar `orientation` en `app.json` (hoy está en `portrait`).
 - [ ] Corregir la codificación de los comentarios en `MainView.cs` (aparece "TamaÃ±o" en vez de "Tamaño").

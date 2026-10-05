@@ -1,9 +1,11 @@
 <Solution>
   <Configurations>
-    <Platform Name="Any CPU" />
     <Platform Name="x86" />
   </Configurations>
   <Project Path="Solucion Ganaderia/Solucion Ganaderia.csproj" Id="a2508775-de26-4535-af5e-96494597aab9">
-    <Platform Solution="*|x86" Project="x86" />
+    <Platform Project="x86" />
+  </Project>
+  <Project Path="Ganaderia.Core/Ganaderia.Core.csproj">
+    <Platform Project="x86" />
   </Project>
 </Solution>

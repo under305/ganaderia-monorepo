@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System;
+using System.IO;
 using System.Windows.Forms;
+using Ganaderia.Core;
 
 namespace Solucion_Ganaderia
 {
@@ -16,7 +15,29 @@ namespace Solucion_Ganaderia
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+
+            // %LOCALAPPDATA%\SIRGAN\ganaderia.db: siempre tiene permisos de escritura,
+            // aunque el programa esté instalado en "Archivos de programa".
+            string rutaBaseDatos = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SIRGAN",
+                "ganaderia.db");
+
+            ServiciosApp servicios;
+            try
+            {
+                servicios = ServiciosApp.Iniciar(rutaBaseDatos);
+            }
+            catch (Exception ex)
+            {
+                // Típico en una PC nueva: falta SQLite.Interop.dll (no se copió la carpeta x86\ completa).
+                MessageBox.Show(
+                    $"No se pudo abrir la base de datos:\n{rutaBaseDatos}\n\n{ex.Message}",
+                    "SIRGAN", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            Application.Run(new Form1(servicios));
         }
     }
 }
